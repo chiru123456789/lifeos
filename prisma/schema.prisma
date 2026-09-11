@@ -1,0 +1,323 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id      String  @id @default(cuid())
+  clerkId String  @unique
+  email   String?
+  name    String?
+
+  timetableEntries TimetableEntry[]
+  tasks            Task[]
+  habits           Habit[]
+  workoutPrograms  WorkoutProgram[]
+  exercises        Exercise[]
+  dietPlans        DietPlan[]
+  foods            Food[]
+  rules            Rule[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model TimetableEntry {
+  id        String  @id @default(cuid())
+  userId    String
+  title     String
+  startTime String
+  endTime   String
+  category  String  @default("Personal")
+  priority  String  @default("Medium")
+  dayOfWeek Int
+  enabled   Boolean @default(true)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([dayOfWeek])
+  @@index([enabled])
+}
+
+model Task {
+  id          String    @id @default(cuid())
+  userId      String
+  title       String
+  description String?
+  dueDate     DateTime?
+  priority    String    @default("Medium")
+  category    String    @default("Personal")
+  completed   Boolean   @default(false)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([dueDate])
+  @@index([completed])
+}
+
+model Habit {
+  id          String  @id @default(cuid())
+  userId      String
+  name        String
+  description String?
+  frequency   String  @default("Daily")
+  target      Int     @default(1)
+  enabled     Boolean @default(true)
+
+  user        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  completions HabitCompletion[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([enabled])
+}
+
+model HabitCompletion {
+  id      String   @id @default(cuid())
+  habitId String
+  date    DateTime
+  count   Int      @default(1)
+
+  habit Habit @relation(fields: [habitId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([habitId, date])
+  @@index([date])
+  @@index([habitId])
+}
+
+model WorkoutProgram {
+  id          String  @id @default(cuid())
+  userId      String
+  name        String
+  description String?
+  active      Boolean @default(true)
+
+  user User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  days WorkoutDay[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([active])
+}
+
+model WorkoutDay {
+  id        String  @id @default(cuid())
+  programId String
+  name      String
+  dayNumber Int
+  notes     String?
+
+  program   WorkoutProgram    @relation(fields: [programId], references: [id], onDelete: Cascade)
+  exercises WorkoutExercise[]
+  sessions  WorkoutSession[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([programId, dayNumber])
+  @@index([programId])
+}
+
+model Exercise {
+  id          String  @id @default(cuid())
+  userId      String
+  name        String
+  category    String  @default("General")
+  equipment   String?
+  description String?
+  custom      Boolean @default(true)
+
+  user             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workoutExercises WorkoutExercise[]
+  sets             WorkoutSet[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([category])
+}
+
+model WorkoutExercise {
+  id           String  @id @default(cuid())
+  workoutDayId String
+  exerciseId   String
+  order        Int     @default(0)
+  sets         Int     @default(3)
+  targetReps   String  @default("8-12")
+  restSeconds  Int     @default(90)
+  notes        String?
+
+  workoutDay WorkoutDay   @relation(fields: [workoutDayId], references: [id], onDelete: Cascade)
+  exercise   Exercise     @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+  setsLogged WorkoutSet[]
+
+  @@unique([workoutDayId, exerciseId])
+  @@index([workoutDayId])
+  @@index([exerciseId])
+}
+
+model WorkoutSession {
+  id           String   @id @default(cuid())
+  workoutDayId String
+  date         DateTime @default(now())
+  durationMin  Int?
+  notes        String?
+
+  workoutDay WorkoutDay   @relation(fields: [workoutDayId], references: [id], onDelete: Cascade)
+  sets       WorkoutSet[]
+
+  createdAt DateTime @default(now())
+
+  @@index([date])
+  @@index([workoutDayId])
+}
+
+model WorkoutSet {
+  id                String  @id @default(cuid())
+  sessionId         String
+  exerciseId        String
+  workoutExerciseId String?
+  setNumber         Int
+  reps              Int?
+  weight            Float?
+  resistance        Float?
+  completed         Boolean @default(false)
+  restSeconds       Int?
+  notes             String?
+
+  session         WorkoutSession   @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  exercise        Exercise         @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+  workoutExercise WorkoutExercise? @relation(fields: [workoutExerciseId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+
+  @@index([sessionId])
+  @@index([exerciseId])
+}
+
+model DietPlan {
+  id          String  @id @default(cuid())
+  userId      String
+  name        String
+  description String?
+  active      Boolean @default(true)
+
+  user    User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  meals   Meal[]
+  targets NutritionTarget[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([active])
+}
+
+model Meal {
+  id        String  @id @default(cuid())
+  planId    String
+  name      String
+  mealTime  String
+  order     Int     @default(0)
+  completed Boolean @default(false)
+
+  plan  DietPlan   @relation(fields: [planId], references: [id], onDelete: Cascade)
+  foods MealFood[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([planId])
+  @@index([mealTime])
+}
+
+model Food {
+  id          String  @id @default(cuid())
+  userId      String
+  name        String
+  servingUnit String  @default("g")
+  calories    Float   @default(0)
+  protein     Float   @default(0)
+  carbs       Float   @default(0)
+  fats        Float   @default(0)
+  custom      Boolean @default(true)
+
+  user  User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  meals MealFood[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([name])
+}
+
+model MealFood {
+  id       String @id @default(cuid())
+  mealId   String
+  foodId   String
+  quantity Float  @default(100)
+
+  meal Meal @relation(fields: [mealId], references: [id], onDelete: Cascade)
+  food Food @relation(fields: [foodId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([mealId, foodId])
+  @@index([mealId])
+  @@index([foodId])
+}
+
+model NutritionTarget {
+  id       String @id @default(cuid())
+  planId   String
+  calories Float  @default(0)
+  protein  Float  @default(0)
+  carbs    Float  @default(0)
+  fats     Float  @default(0)
+
+  plan DietPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([planId])
+}
+
+model Rule {
+  id          String  @id @default(cuid())
+  userId      String
+  title       String
+  description String?
+  type        String  @default("MUST_DO")
+  priority    String  @default("Medium")
+  enabled     Boolean @default(true)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([type])
+  @@index([enabled])
+  @@index([priority])
+}

@@ -44,3 +44,9 @@ node20.zip
 .env
 .env.local
 
+
+/app/generated/prisma
+
+.agents/
+.claude/
+.windsurf/
